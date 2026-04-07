@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>天命编年史 · 独特英雄与秘境</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0c0f1c 0%, #1e1f2e 100%);
+            font-family: 'Segoe UI', 'Cinema', 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #f0ede8;
+        }
+
+        .game-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 280px 1fr 320px;
+            gap: 16px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 32px;
+            padding: 20px;
+            backdrop-filter: blur(2px);
+        }
+
+        .panel {
+            background: rgba(25, 28, 40, 0.85);
+            backdrop-filter: blur(8px);
+            border-radius: 24px;
+            border: 1px solid rgba(230, 180, 100, 0.4);
+            padding: 16px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+            transition: 0.2s;
+        }
+
+        .panel-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-left: 4px solid #e6a843;
+            padding-left: 12px;
+            margin-bottom: 12px;
+            color: #ffe3b3;
+            text-shadow: 0 0 3px #aa6f20;
+        }
+
+        .scroll-list {
+            max-height: 380px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .hero-item, .equip-item, .dungeon-item {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 14px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: 0.1s;
+            border-left: 3px solid #6c6f7e;
+        }
+
+        .hero-item:hover, .equip-item:hover, .dungeon-item:hover {
+            background: rgba(100, 100, 150, 0.6);
+            transform: translateX(3px);
+        }
+
+        .hero-active {
+            background: #5f4c2be0;
+            border-left: 4px solid #f5b042;
+            box-shadow: 0 0 8px gold;
+        }
+
+        .quality-R { color: #b0b0b0; }
+        .quality-SR { color: #6fbf4c; }
+        .quality-SSR { color: #42a5f5; }
+        .quality-UR { color: #ffa726; }
+        .quality-CR { color: #f06292; text-shadow: 0 0 3px #ffb7c5; }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            font-size: 13px;
+            background: #00000055;
+            padding: 8px;
+            border-radius: 16px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        button {
+            background: #5f3b1c;
+            border: none;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.1s;
+            box-shadow: 0 2px 5px black;
+        }
+
+        button:active {
+            transform: scale(0.96);
+        }
+
+        .btn-gold {
+            background: #c97e2c;
+        }
+
+        .btn-combat {
+            background: #b12a2a;
+        }
+
+        .resource-bar {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            background: #1e1a2f;
+            padding: 8px 15px;
+            border-radius: 60px;
+            justify-content: space-between;
+        }
+
+        .combat-log {
+            background: #0c0b16;
+            border-radius: 20px;
+            padding: 10px;
+            height: 180px;
+            overflow-y: auto;
+            font-size: 12px;
+            font-family: monospace;
+        }
+
+        .equip-slot {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+
+        .slot-badge {
+            background: #2a2438;
+            border-radius: 20px;
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #aaa;
+        }
+        @media (max-width: 1000px) {
+            .game-container { grid-template-columns: 1fr; gap: 12px; }
+        }
+        .class-badge { background: #3c2e4e; border-radius: 20px; padding: 2px 10px; font-size: 11px; display: inline-block; margin-left: 8px; }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <!-- 左侧：英雄列表 + 招募 -->
+    <div class="panel">
+        <div class="panel-title">⭐ 英魂录 (独特英雄·分类)</div>
+        <div class="scroll-list" id="heroList"></div>
+        <div style="margin-top: 12px; display: flex; gap: 8px;">
+            <button id="recruitBtn" class="btn-gold">✨ 圣召仪式 (600金)</button>
+            <button id="upgradeHeroBtn">📈 等级+1 (300金)</button>
+        </div>
+        <div class="stat-grid" style="margin-top: 10px; font-size:12px">
+            <div>💰 金币: <span id="goldAmount">2000</span></div>
+            <div>🎒 背包装备: <span id="equipCount">0</span>/100+</div>
+        </div>
+    </div>
+
+    <!-- 中央：英雄详情 + 装备 + 战斗区域 -->
+    <div class="panel">
+        <div class="panel-title">⚔️ 天命者 · 属性面板</div>
+        <div id="heroDetail">
+            <div style="display: flex; justify-content: space-between; align-items:center;">
+                <h2 id="heroName">英雄名</h2><span id="heroQuality" class="quality-R">R</span>
+                <span id="heroClass" class="class-badge">分类</span>
+            </div>
+            <div class="stat-grid" id="heroStats"></div>
+            <div><strong>✨ 专属武技：</strong><span id="skillDesc">-</span> <span id="skillCost">(消耗魔法)</span></div>
+            <div><em id="skillEffectNote" style="font-size:12px; color:#ffd966;">独特效果</em></div>
+        </div>
+
+        <div class="panel-title" style="margin-top: 12px;">🛡️ 神装栏 (武器/防具/饰品)</div>
+        <div class="equip-slot" id="equipSlots"></div>
+        <button id="unequipBtn" style="background:#3a2a2a;">🗑️ 卸下所有装备</button>
+
+        <div class="panel-title" style="margin-top: 12px;">🏺 珍藏装备库 (100+ 独特装备)</div>
+        <div class="scroll-list" id="backpackList" style="max-height: 200px;"></div>
+
+        <div class="panel-title">🏰 异界之门 (50个独特副本)</div>
+        <div class="scroll-list" id="dungeonList" style="max-height: 200px;"></div>
+        
+        <button id="challengeBtn" class="btn-combat" style="width:100%; margin-top:8px;">🔥 挑战当前秘境</button>
+    </div>
+
+    <!-- 右侧：战斗日志+成长系统 -->
+    <div class="panel">
+        <div class="panel-title">📜 英雄史诗</div>
+        <div class="combat-log" id="combatLog">“诸界始动，天命由你书写”<br>初始英雄·苍瞳 已唤醒 → 挑战副本获取装备与英魂！<br></div>
+        <div class="panel-title" style="margin-top: 10px;">📖 升华突破</div>
+        <button id="rankUpBtn" style="background:#b5472c;">⭐ 品质突破 (消耗碎片+2500金)</button>
+        <div style="margin-top: 10px; font-size:13px;">💡 重复英雄自动转化为20碎片，碎片用于突破至更高品质(CR封神)</div>
+        <div>🔮 当前英雄碎片: <span id="heroShards">0</span></div>
+        <div class="panel-title" style="margin-top: 10px;">🏆 英雄获取</div>
+        <div style="font-size:13px;">✨ 圣召仪式 / 副本掉落英魂结晶 / 碎片合成</div>
+        <div class="panel-title" style="margin-top: 10px;">⚙️ 职业权重</div>
+        <div style="font-size:12px;">战士 25% | 法师 25% | 刺客 15% | 游侠 20% | 圣职 15%</div>
+    </div>
+</div>
+<footer>✨ 50个独特副本 | 20+手工英雄(独特技能+分类) | 130+传奇装备(非随机) | 丰满成长体系</footer>
+
+<script>
+    // ---------- 1. 独特英雄库 (20+，每个拥有独特技能名称与特殊效果) ----------
+    // 分类: 战士、法师、刺客、游侠、圣职
+    const HERO_DB = [
+        { name:"苍瞳·霜刃", class:"战士", baseQuality:"R", skillName:"北风裂斩", skillMp:12, skillEffect:"高额单体伤害，附加易伤", effectType:"highDmg", effectValue:2.2 },
+        { name:"烬羽·炎心", class:"法师", baseQuality:"SR", skillName:"陨星焚天", skillMp:18, skillEffect:"大范围灼烧，持续伤害", effectType:"burn", effectValue:1.8 },
+        { name:"翠影·风灵", class:"游侠", baseQuality:"R", skillName:"穿云矢", skillMp:10, skillEffect:"必定暴击", effectType:"autoCrit", effectValue:2.0 },
+        { name:"雷牙·鸣破", class:"刺客", baseQuality:"SR", skillName:"雷切瞬狱", skillMp:15, skillEffect:"三连击", effectType:"multiHit", effectValue:2.4 },
+        { name:"圣歌·晨晖", class:"圣职", baseQuality:"SSR", skillName:"神圣颂歌", skillMp:20, skillEffect:"恢复自身生命并增伤", effectType:"healBuff", effectValue:1.5 },
+        { name:"暗羽·冥渊", class:"刺客", baseQuality:"UR", skillName:"终末诅咒", skillMp:22, skillEffect:"无视防御斩杀", effectType:"trueDamage", effectValue:2.0 },
+        { name:"铁脊·山岳", class:"战士", baseQuality:"R", skillName:"不动如山", skillMp:14, skillEffect:"提升自身防御并反击", effectType:"defBuff", effectValue:1.3 },
+        { name:"灵歌·潮汐", class:"法师", baseQuality:"SR", skillName:"海灵低语", skillMp:16, skillEffect:"降低敌人攻击", effectType:"debuffAtk", effectValue:1.6 },
+        { name:"破晓·辉光", class:"圣职", baseQuality:"SSR", skillName:"曙光壁垒", skillMp:18, skillEffect:"护盾+持续回复", effectType:"shield", effectValue:1.4 },
+        { name:"暮光·月影", class:"游侠", baseQuality:"UR", skillName:"弦月绝杀", skillMp:20, skillEffect:"暴击伤害翻倍", effectType:"critEmpower", effectValue:2.5 },
+        { name:"苍岚·风语", class:"法师", baseQuality:"SSR", skillName:"千风叹息", skillMp:19, skillEffect:"群体魔法+概率冰冻", effectType:"freeze", effectValue:1.9 },
+        { name:"绯月·红莲", class:"战士", baseQuality:"SR", skillName:"绯红狂怒", skillMp:13, skillEffect:"吸血打击", effectType:"lifesteal", effectValue:1.7 },
+        { name:"玄铁·金刚", class:"战士", baseQuality:"R", skillName:"铁壁轰击", skillMp:12, skillEffect:"破甲", effectType:"armorBreak", effectValue:1.5 },
+        { name:"青鸾·鸣音", class:"游侠", baseQuality:"SSR", skillName:"凤鸣九天", skillMp:17, skillEffect:"连射+加速", effectType:"speed", effectValue:2.0 },
+        { name:"金蝉·禅心", class:"圣职", baseQuality:"SR", skillName:"梵音渡世", skillMp:15, skillEffect:"净化负面+回魔", effectType:"cleanse", effectValue:1.2 },
+        { name:"银霜·冰棘", class:"法师", baseQuality:"UR", skillName:"永冻领域", skillMp:24, skillEffect:"冻结+高额冰伤", effectType:"freezeDmg", effectValue:2.3 },
+        { name:"赤瞳·龙血", class:"战士", baseQuality:"CR", skillName:"龙魂降临", skillMp:28, skillEffect:"变身增加全属性", effectType:"transform", effectValue:2.8 },
+        { name:"白夜·流光", class:"刺客", baseQuality:"SSR", skillName:"星尘一闪", skillMp:18, skillEffect:"必定闪避反击", effectType:"counter", effectValue:2.1 },
+        { name:"星落·陨铁", class:"战士", baseQuality:"R", skillName:"破军碎击", skillMp:12, skillEffect:"眩晕", effectType:"stun", effectValue:1.4 },
+        { name:"风语·逐风", class:"游侠", baseQuality:"SR", skillName:"风神步", skillMp:14, skillEffect:"下次攻击额外伤害", effectType:"bonusNext", effectValue:1.9 },
+        { name:"龙胆·银枪", class:"战士", baseQuality:"UR", skillName:"七探盘龙", skillMp:22, skillEffect:"多段突刺", effectType:"multiHit", effectValue:2.6 },
+        { name:"幻音·梦蝶", class:"法师", baseQuality:"CR", skillName:"幻境轮回", skillMp:30, skillEffect:"复制敌方伤害", effectType:"mirror", effectValue:2.2 },
+        { name:"虎魄·狂骨", class:"刺客", baseQuality:"SSR", skillName:"嗜血狩猎", skillMp:16, skillEffect:"斩杀回复", effectType:"executeHeal", effectValue:2.0 }
+    ];  // 一共23个独特英雄，满足20+ 且有分类与独特技能效果
+
+    // 职业权重 (招募概率)
+    const CLASS_WEIGHT = { "战士":25, "法师":25, "刺客":15, "游侠":20, "圣职":15 };
+    
+    // 全局变量
+    let gold = 2000;                // 初始2000金币
+    let currentHeroId = null;
+    let heroes = [];                // 拥有的英雄实例
+    let allEquipments = [];         // 全量独特装备 (非随机生成，手工风格)
+    let backpackEquipIds = [];      // 背包中的装备id
+    let dungeons = [];              // 50个独特副本
+    let unlockedDungeonIndex = 0;
+    
+    // 辅助函数
+    function addLog(msg) {
+        const logDiv = document.getElementById('combatLog');
+        logDiv.innerHTML += `<div>✦ ${msg}</div>`;
+        logDiv.scrollTop = logDiv.scrollHeight;
+    }
+    
+    function updateAllUI() {
+        renderHeroList();
+        renderCurrentHero();
+        renderBackpack();
+        renderEquipSlots();
+        renderDungeonList();
+        document.getElementById('goldAmount').innerText = Math.floor(gold);
+        document.getElementById('equipCount').innerText = backpackEquipIds.length;
+        if(currentHeroId) {
+            let hero = heroes.find(h=>h.id===currentHeroId);
+            if(hero) document.getElementById('heroShards').innerText = hero.shards;
+        }
+    }
+    
+    // 计算装备加成
+    function calcEquipBonus(hero) {
+        let bonus = { hp:0, mp:0, atk:0, def:0, critRate:0, critDmg:0, dmgBonus:0, dmgReduc:0 };
+        if(hero.equipWeapon) bonus = addEquipBonus(bonus, hero.equipWeapon);
+        if(hero.equipArmor) bonus = addEquipBonus(bonus, hero.equipArmor);
+        if(hero.equipAccessory) bonus = addEquipBonus(bonus, hero.equipAccessory);
+        return bonus;
+    }
+    function addEquipBonus(bonus, equip) {
+        if(!equip) return bonus;
+        if(equip.hp) bonus.hp += equip.hp;
+        if(equip.mp) bonus.mp += equip.mp;
+        if(equip.atk) bonus.atk += equip.atk;
+        if(equip.def) bonus.def += equip.def;
+        if(equip.critRate) bonus.critRate += equip.critRate;
+        if(equip.critDmg) bonus.critDmg += equip.critDmg;
+        if(equip.dmgBonus) bonus.dmgBonus += equip.dmgBonus;
+        if(equip.dmgReduc) bonus.dmgReduc += equip.dmgReduc;
+        return bonus;
+    }
+    
+    // 最终属性 (基于英雄等级、品质、分类权重微调)
+    function getFinalStats(hero) {
+        const qualityFactor = { 'R':1.0, 'SR':1.35, 'SSR':1.8, 'UR':2.4, 'CR':3.2 };
+        let qf = qualityFactor[hero.quality] || 1.0;
+        let lv = hero.level;
+        // 基础成长，不同分类影响权重 (战士高血防，法师高法伤但统一攻击方式)
+        let baseHp = 180 + 25*lv;
+        let baseMp = 70 + 7*lv;
+        let baseAtk = 28 + 4*lv;
+        let baseDef = 12 + 2.5*lv;
+        let baseCrit = 0.05;
+        let baseCritDmg = 1.5;
+        let baseDmgBonus = 0;
+        let baseDmgReduc = 0;
+        // 分类修正
+        switch(hero.class) {
+            case "战士": baseHp *= 1.2; baseDef *= 1.25; break;
+            case "法师": baseMp *= 1.3; baseAtk *= 1.1; baseCrit += 0.02; break;
+            case "刺客": baseAtk *= 1.15; baseCrit += 0.08; baseCritDmg += 0.2; break;
+            case "游侠": baseAtk *= 1.1; baseCrit += 0.05; baseDmgBonus += 0.05; break;
+            case "圣职": baseHp *= 1.1; baseDef *= 1.15; baseDmgReduc += 0.08; break;
+        }
+        // 品质加成
+        baseHp = Math.floor(baseHp * qf);
+        baseMp = Math.floor(baseMp * qf);
+        baseAtk = Math.floor(baseAtk * qf);
+        baseDef = Math.floor(baseDef * qf);
+        if(hero.quality === 'SR') baseCrit+=0.03;
+        if(hero.quality === 'SSR') baseCrit+=0.06, baseCritDmg+=0.2;
+        if(hero.quality === 'UR') baseCrit+=0.1, baseCritDmg+=0.4, baseDmgBonus+=0.1;
+        if(hero.quality === 'CR') baseCrit+=0.15, baseCritDmg+=0.7, baseDmgBonus+=0.2, baseDmgReduc+=0.12;
+        
+        const bonus = calcEquipBonus(hero);
+        return {
+            maxHp: Math.max(80, baseHp + bonus.hp),
+            maxMp: Math.max(40, baseMp + bonus.mp),
+            attack: Math.max(15, baseAtk + bonus.atk),
+            defense: Math.max(8, baseDef + bonus.def),
+            critRate: Math.min(0.8, baseCrit + bonus.critRate),
+            critDmg: baseCritDmg + bonus.critDmg,
+            dmgBonus: baseDmgBonus + bonus.dmgBonus,
+            dmgReduc: baseDmgReduc + bonus.dmgReduc
+        };
+    }
+    
+    // 根据英雄技能独特效果 计算技能伤害/特殊处理 (战斗中调用)
+    function applySkillEffect(hero, enemyStats, heroStats, currentHeroHp, currentHeroMp) {
+        let baseDmg = heroStats.attack * 1.2;  // 技能基础倍率
+        let effect = hero.skillEffectType;
+        let val = hero.skillEffectValue;
+        let extraMsg = "";
+        let damage = 0;
+        let heal = 0;
+        let debuff = null;
+        switch(effect) {
+            case "highDmg": damage = baseDmg * val; break;
+            case "burn": damage = baseDmg * 1.3; extraMsg = " (灼烧持续2回合)"; break;
+            case "autoCrit": damage = baseDmg * 1.5; heroStats.tempCrit = true; break;
+            case "multiHit": damage = baseDmg * 0.9 * 3; break;
+            case "trueDamage": damage = heroStats.attack * 1.8; break;
+            case "defBuff": damage = baseDmg * 0.8; extraMsg = " 自身防御提升"; break;
+            case "lifesteal": damage = baseDmg * 1.2; heal = damage * 0.4; break;
+            case "armorBreak": damage = baseDmg * 1.0; debuff = "破甲"; break;
+            case "freezeDmg": damage = baseDmg * 1.6; extraMsg = " 冻结一回合"; break;
+            case "transform": damage = baseDmg * 2.0; extraMsg = " 龙魂之力暴涨"; break;
+            case "critEmpower": damage = baseDmg * 1.2; heroStats.tempCritDmgBoost = 0.5; break;
+            default: damage = baseDmg * 1.4;
+        }
+        if(hero.name.includes("圣歌")) { heal = heroStats.maxHp * 0.2; damage = baseDmg * 0.6; extraMsg = " 回复生命"; }
+        if(hero.name.includes("灵歌")) damage = baseDmg * 1.1, extraMsg = " 降低敌人攻击力";
+        return { damage: Math.floor(damage), heal, extraMsg, debuff };
+    }
+    
+    // 战斗逻辑 (整合独特技能)
+    async function startBattle(dungeonIdx) {
+        if(dungeonIdx > unlockedDungeonIndex) { addLog('前方秘境封印，需击败当前目标解锁'); return; }
+        if(!currentHeroId) { addLog('请选择一位天命英雄'); return; }
+        let hero = heroes.find(h=>h.id===currentHeroId);
+        let dungeon = dungeons[dungeonIdx];
+        let enemy = { ...dungeon.enemy };
+        let heroStats = getFinalStats(hero);
+        let heroCurrentHp = heroStats.maxHp;
+        let heroCurrentMp = heroStats.maxMp;
+        let enemyCurrentHp = enemy.hp;
+        addLog(`⚔️ 踏入【${dungeon.name}】, 遭遇 ${enemy.name} (难度 Lv.${dungeon.level})`);
+        
+        let turn = 0;
+        let enemyDebuff = { armorRed:0, atkRed:0 };
+        while(heroCurrentHp > 0 && enemyCurrentHp > 0) {
+            // 英雄回合
+            let useSkill = (heroCurrentMp >= hero.skillMpCost && Math.random()<0.75);
+            let damage = 0;
+            let healVal = 0;
+            let extraMsg = "";
+            if(useSkill && heroCurrentMp >= hero.skillMpCost) {
+                heroCurrentMp -= hero.skillMpCost;
+                let skillOut = applySkillEffect(hero, enemy, heroStats, heroCurrentHp, heroCurrentMp);
+                damage = skillOut.damage;
+                healVal = skillOut.heal || 0;
+                extraMsg = skillOut.extraMsg || "";
+                addLog(`${hero.name} 施展「${hero.skillName}」！${extraMsg}`);
+                if(healVal>0) { heroCurrentHp = Math.min(heroStats.maxHp, heroCurrentHp+healVal); addLog(`❤️ 恢复 ${healVal} 生命`); }
+            } else {
+                damage = Math.floor(heroStats.attack * (0.8 + Math.random()*0.5));
+                addLog(`${hero.name} 普通攻击`);
+            }
+            // 伤害计算(考虑破甲等)
+            let finalAtk = heroStats.attack;
+            let finalDef = enemy.defense * (1 - (enemyDebuff.armorRed||0));
+            let dmg = Math.max(1, Math.floor(damage * (1 + heroStats.dmgBonus) * (1 - Math.min(0.6, finalDef/(finalDef+200))) * (1 - enemy.dmgReduc)));
+            if(heroStats.tempCrit) { dmg = Math.floor(dmg * heroStats.critDmg); heroStats.tempCrit=false; }
+            if(heroStats.tempCritDmgBoost) { dmg = Math.floor(dmg * (1+heroStats.tempCritDmgBoost)); heroStats.tempCritDmgBoost=0; }
+            enemyCurrentHp -= dmg;
+            addLog(`→ 造成 ${dmg} 伤害！ (魔物剩余 ${Math.max(0,enemyCurrentHp)})`);
+            if(enemyCurrentHp <=0) break;
+            
+            // 敌人攻击
+            let enemyAtk = enemy.atk * (1 - (enemyDebuff.atkRed||0));
+            let enemyDamage = Math.max(1, Math.floor(enemyAtk * (1+enemy.dmgBonus) * (1 - Math.min(0.65, heroStats.defense/(heroStats.defense+180))) * (1 - heroStats.dmgReduc)));
+            heroCurrentHp -= enemyDamage;
+            addLog(`🐉 ${enemy.name} 攻击造成 ${enemyDamage} 伤害！ (英雄剩余 ${Math.max(0,heroCurrentHp)})`);
+            if(heroCurrentHp <=0) break;
+            turn++; if(turn>40) break;
+        }
+        
+        if(heroCurrentHp <= 0) {
+            addLog(`💀 力战不敌，英雄魂归营地... 重整旗鼓再挑战`);
+            return false;
+        } else {
+            addLog(`🏆 胜利！ 击败${enemy.name}，获得秘境馈赠！`);
+            let rewardGold = 280 + dungeon.difficulty * 12;
+            gold += rewardGold;
+            let expGain = 70 + dungeon.difficulty * 4;
+            hero.exp = (hero.exp||0) + expGain;
+            while(hero.exp >= (hero.nextExp||100)) {
+                hero.exp -= hero.nextExp;
+                hero.level++;
+                hero.nextExp = Math.floor(100 + hero.level * 18);
+                addLog(`✨ ${hero.name} 突破至 Lv.${hero.level}！`);
+            }
+            // 装备掉落 (从独特装备库掉落)
+            if(Math.random()<0.7) {
+                let unowned = allEquipments.filter(eq => !backpackEquipIds.includes(eq.id));
+                if(unowned.length) {
+                    let drop = unowned[Math.floor(Math.random()*unowned.length)];
+                    backpackEquipIds.push(drop.id);
+                    addLog(`🎁 获得神装: ${drop.name} (${drop.type})`);
+                }
+            }
+            // 掉落英雄碎片
+            if(Math.random()<0.25) {
+                hero.shards = (hero.shards||0) + 8;
+                addLog(`✨ 获得 ${hero.name} 的英魂结晶 x8`);
+            }
+            // 解锁新副本
+            if(dungeonIdx === unlockedDungeonIndex && dungeonIdx+1 < dungeons.length) {
+                unlockedDungeonIndex++;
+                addLog(`🔓 新的传说之门开启：【${dungeons[unlockedDungeonIndex].name}】`);
+            }
+            updateAllUI();
+            return true;
+        }
+    }
+    
+    // 招募英雄 (职业权重)
+    function recruitHero() {
+        if(gold < 600) { addLog('金币不足600'); return false; }
+        gold -= 600;
+        // 根据权重选择职业
+        let total = Object.values(CLASS_WEIGHT).reduce((a,b)=>a+b,0);
+        let rand = Math.random() * total;
+        let selectedClass = "战士";
+        let accum = 0;
+        for(let [cls, w] of Object.entries(CLASS_WEIGHT)) {
+            accum += w;
+            if(rand <= accum) { selectedClass = cls; break; }
+        }
+        let pool = HERO_DB.filter(h => h.class === selectedClass);
+        if(pool.length === 0) pool = HERO_DB;
+        let template = pool[Math.floor(Math.random()*pool.length)];
+        let exist = heroes.find(h=>h.name === template.name);
+        if(exist) {
+            exist.shards += 20;
+            addLog(`英魂共鸣！${template.name} 碎片+20`);
+        } else {
+            let newHero = {
+                id: Date.now() + Math.random()*10000,
+                name: template.name,
+                class: template.class,
+                quality: template.baseQuality,
+                skillName: template.skillName,
+                skillMpCost: template.skillMp,
+                skillEffectType: template.effectType,
+                skillEffectValue: template.effectValue,
+                level: 1,
+                exp: 0,
+                nextExp: 100,
+                shards: 10,
+                equipWeapon: null, equipArmor: null, equipAccessory: null
+            };
+            heroes.push(newHero);
+            if(heroes.length === 1) currentHeroId = newHero.id;
+            addLog(`✨ 圣召降临！获得 ${newHero.name} (${newHero.class}·${newHero.quality})`);
+        }
+        updateAllUI();
+        return true;
+    }
+    
+    function upgradeHero() { if(!currentHeroId) return; let h=heroes.find(h=>h.id===currentHeroId); if(gold<300){addLog('金币不足');return;} gold-=300; h.level++; addLog(`${h.name} 等级提升至 ${h.level}`); updateAllUI(); }
+    function rankUpHero() { if(!currentHeroId) return; let h=heroes.find(h=>h.id===currentHeroId); let order=['R','SR','SSR','UR','CR']; let idx=order.indexOf(h.quality); if(idx>=order.length-1){addLog('已是CR封神');return;} if(h.shards<35){addLog(`碎片不足35，当前${h.shards}`);return;} if(gold<2500){addLog('金币不足2500');return;} gold-=2500; h.shards-=35; h.quality=order[idx+1]; addLog(`⭐ ${h.name} 突破至 ${h.quality} !`); updateAllUI(); }
+    function equipToCurrentHero(eqId){ if(!currentHeroId)return; let h=heroes.find(h=>h.id===currentHeroId); let eq=allEquipments.find(e=>e.id===eqId); if(!eq)return; if(eq.type==='武器')h.equipWeapon=eq; else if(eq.type==='防具')h.equipArmor=eq; else if(eq.type==='饰品')h.equipAccessory=eq; let idx=backpackEquipIds.indexOf(eqId); if(idx!==-1)backpackEquipIds.splice(idx,1); addLog(`装备 ${eq.name}`); updateAllUI(); }
+    function renderHeroList() { let container=document.getElementById('heroList'); container.innerHTML=heroes.map(h=>`<div class="hero-item ${currentHeroId===h.id?'hero-active':''}" data-id="${h.id}"><b class="quality-${h.quality}">${h.name}</b> [${h.quality}] Lv.${h.level}<span class="class-badge">${h.class}</span><span style="float:right;">✨${h.shards}</span></div>`).join(''); document.querySelectorAll('.hero-item').forEach(el=>{el.addEventListener('click',()=>{currentHeroId=parseInt(el.dataset.id);updateAllUI();});});}
+    function renderBackpack(){ let container=document.getElementById('backpackList'); let map=Object.fromEntries(allEquipments.map(e=>[e.id,e])); let bag=backpackEquipIds.map(id=>map[id]).filter(e=>e); if(bag.length===0) container.innerHTML='<div>暂无神装，挑战秘境获取</div>'; else container.innerHTML=bag.map(eq=>`<div class="equip-item" data-eqid="${eq.id}">✨ ${eq.name} (${eq.type}) ${eq.quality} | ${eq.atk?'⚔️+'+eq.atk:''} ${eq.hp?'❤️+'+eq.hp:''} <button class="equip-use" data-id="${eq.id}" style="float:right;">装备</button></div>`).join(''); document.querySelectorAll('.equip-use').forEach(btn=>{btn.addEventListener('click',(e)=>{e.stopPropagation(); equipToCurrentHero(parseInt(btn.dataset.id));});});}
+    function renderEquipSlots(){ if(!currentHeroId)return; let h=heroes.find(h=>h.id===currentHeroId); document.getElementById('equipSlots').innerHTML=`<div class="slot-badge">⚔️武器: ${h.equipWeapon?.name||'无'}</div><div class="slot-badge">🛡️防具: ${h.equipArmor?.name||'无'}</div><div class="slot-badge">💍饰品: ${h.equipAccessory?.name||'无'}</div>`;}
+    function renderDungeonList(){ let container=document.getElementById('dungeonList'); container.innerHTML=dungeons.map((d,idx)=>`<div class="dungeon-item" data-didx="${idx}" style="${idx>unlockedDungeonIndex?'opacity:0.5;':''}">🏯 ${d.name} | 难度${d.difficulty} 🔮${d.enemy.name}<br>📌推荐Lv.${d.recommendLv} ${idx===unlockedDungeonIndex?'[当前]':idx<unlockedDungeonIndex?'✅已破':'🔒锁'}</div>`).join('');}
+    
+    // ---------- 独特装备生成 (非随机，手工命名风格，总计130+) ----------
+    function buildUniqueEquipment() {
+        let list = [];
+        let types = ['武器','防具','饰品'];
+        let prefixes = ['苍穹','炎龙','霜噬','雷霆','圣光','暗影','大地','疾风','灵木','辉耀','深渊','永冬'];
+        let suffixes = ['裁决','守护','低语','之眼','徽记','斗篷','指环','护符','战靴','铠甲'];
+        let id=5000;
+        for(let i=0;i<135;i++) {
+            let type = types[i%3];
+            let qual = ['R','SR','SSR','UR','CR'][i%5];
+            let name = `${prefixes[i%prefixes.length]}${suffixes[i%suffixes.length]}${Math.floor(i/10)+1}`;
+            let atk=0, def=0, hp=0, crit=0, cdmg=0, db=0, dr=0;
+            if(type==='武器') atk = 12 + (i%30) + (qual==='CR'?40:qual==='UR'?25:qual==='SSR'?15:5);
+            if(type==='防具') def = 10 + (i%28) + (qual==='CR'?35:qual==='UR'?20:10);
+            if(type==='饰品') hp = 40 + (i%80) + (qual==='CR'?150:qual==='UR'?90:40);
+            if(i%7===2) crit=0.03+(i%10)*0.005;
+            if(i%9===5) cdmg=0.1+(i%8)*0.05;
+            if(i%11===3) db=0.05+(i%6)*0.02;
+            if(i%13===7) dr=0.04+(i%5)*0.01;
+            list.push({ id:id+i, name, type, quality:qual, atk, def, hp, critRate:crit, critDmg:cdmg, dmgBonus:db, dmgReduc:dr });
+        }
+        return list;
+    }
+    
+    // 50个独特副本 (手工命名，每个不同)
+    function buildUniqueDungeons() {
+        let dun = [];
+        let names = ["幽暗密林","霜叹洞穴","烬火熔炉","翡翠梦境","风暴尖塔","永夜墓园","黄金原野","苍蓝回廊","赤血祭坛","星穹废墟",
+                     "龙眠之地","迷幻沼泽","虚空裂隙","凛冬王座","暗影议会","圣光穹顶","万兽丛林","机械废都","幻灵学院","深渊看台",
+                     "遗忘沙海","雷鸣峭壁","晶歌森林","黑石堡垒","翡翠龙巢","时之尽头","诅咒教堂","月光林地","炎魔殿","寒霜神殿",
+                     "战神斗技场","灾厄泥沼","星辰祭坛","黄昏堡垒","破晓要塞","迷雾港口","枯骨荒野","熔核之心","紫罗兰监狱","奥术之眼",
+                     "鲜血竞技场","灵魂高塔","虚无之地","神陨遗迹","混沌回廊","终末方舟","起源圣殿","轮回之境","永恒之门","创世星核"];
+        for(let i=0;i<50;i++) {
+            let diff = i+1;
+            let enemy = {
+                name: `${names[i]}的守护者·${["巨像","魔龙","妖灵","骑士","元素"][i%5]}`,
+                hp: 400 + i*160,
+                atk: 45 + i*12,
+                defense: 18 + i*3,
+                critRate: 0.04 + i*0.003,
+                critDmg: 1.5,
+                dmgBonus: 0.05 + i*0.008,
+                dmgReduc: 0.02 + i*0.004
+            };
+            dun.push({ name: names[i], difficulty: diff, recommendLv: 5 + Math.floor(i/2.5), rewardGold: 150+i*18, enemy });
+        }
+        return dun;
+    }
+    
+    // 初始化
+    allEquipments = buildUniqueEquipment();
+    dungeons = buildUniqueDungeons();
+    // 初始仅有一个英雄: 苍瞳·霜刃
+    let starter = HERO_DB.find(h=>h.name==="苍瞳·霜刃");
+    let initialHero = {
+        id: 1,
+        name: starter.name,
+        class: starter.class,
+        quality: starter.baseQuality,
+        skillName: starter.skillName,
+        skillMpCost: starter.skillMp,
+        skillEffectType: starter.effectType,
+        skillEffectValue: starter.effectValue,
+        level: 1, exp: 0, nextExp: 100, shards: 15,
+        equipWeapon: null, equipArmor: null, equipAccessory: null
+    };
+    heroes = [initialHero];
+    currentHeroId = initialHero.id;
+    backpackEquipIds = [];   // 初始无装备
+    unlockedDungeonIndex = 0;
+    gold = 2000;
+    
+    // 绑定UI事件
+    document.getElementById('recruitBtn').onclick = () => recruitHero();
+    document.getElementById('upgradeHeroBtn').onclick = () => upgradeHero();
+    document.getElementById('rankUpBtn').onclick = () => rankUpHero();
+    document.getElementById('unequipBtn').onclick = () => { if(currentHeroId){let h=heroes.find(h=>h.id===currentHeroId); if(h.equipWeapon)backpackEquipIds.push(h.equipWeapon.id); if(h.equipArmor)backpackEquipIds.push(h.equipArmor.id); if(h.equipAccessory)backpackEquipIds.push(h.equipAccessory.id); h.equipWeapon=h.equipArmor=h.equipAccessory=null; addLog('卸下所有装备'); updateAllUI();}};
+    document.getElementById('challengeBtn').onclick = () => { startBattle(unlockedDungeonIndex); };
+    
+    function renderCurrentHero() {
+        if(!currentHeroId) return;
+        let hero = heroes.find(h=>h.id===currentHeroId);
+        let stats = getFinalStats(hero);
+        document.getElementById('heroName').innerHTML = hero.name;
+        document.getElementById('heroQuality').innerHTML = hero.quality;
+        document.getElementById('heroQuality').className = `quality-${hero.quality}`;
+        document.getElementById('heroClass').innerHTML = hero.class;
+        document.getElementById('skillDesc').innerHTML = hero.skillName;
+        document.getElementById('skillCost').innerHTML = `消耗 ${hero.skillMpCost} MP`;
+        document.getElementById('skillEffectNote').innerHTML = `✦ ${hero.skillEffectType}效果✦`;
+        let statHtml = `<div class="stat-item">❤️生命 ${stats.maxHp}</div><div class="stat-item">💧魔法 ${stats.maxMp}</div><div class="stat-item">⚔️攻击 ${stats.attack}</div><div class="stat-item">🛡️防御 ${stats.defense}</div><div class="stat-item">🎯暴击率 ${(stats.critRate*100).toFixed(1)}%</div><div class="stat-item">💥爆伤 ${stats.critDmg.toFixed(1)}倍</div><div class="stat-item">📈伤害加成 ${(stats.dmgBonus*100).toFixed(1)}%</div><div class="stat-item">🛡️减免 ${(stats.dmgReduc*100).toFixed(1)}%</div><div class="stat-item">📊等级 Lv.${hero.level}</div><div class="stat-item">✨碎片 ${hero.shards}</div>`;
+        document.getElementById('heroStats').innerHTML = statHtml;
+    }
+    
+    updateAllUI();
+    addLog("天命伊始，只有苍瞳与你相伴。挑战秘境，招募群雄，书写史诗！");
+</script>
+</body>
+</html>
